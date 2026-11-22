@@ -1,1 +1,282 @@
-<p>HY</p>
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>LastAttempt</title>
+<style>
+:root{--bg:#0e1520;--side:#06243b;--card:#172230;--line:#26344a;--text:#e8edf3;--muted:#8b98a8;--org:#ff7a1a}
+[data-theme=light]{--bg:#ffffff;--side:#f2f2f2;--card:#f7f7f7;--line:#d6d6d6;--text:#111;--muted:#555;--org:#e56500}
+*{box-sizing:border-box;margin:0;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+input{-webkit-user-select:text;user-select:text}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:Roboto,system-ui,sans-serif;overflow:hidden}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+.hide{display:none!important}
+/* loader */
+#loader{position:fixed;inset:0;background:var(--bg);z-index:100;display:flex;align-items:center;justify-content:center;font-size:44px;font-weight:700}
+#ltype b{color:var(--org)} #ltype:after{content:"|";color:var(--org);animation:bl .7s infinite}
+@keyframes bl{50%{opacity:0}}
+/* rotate */
+#rotate{position:fixed;inset:0;background:var(--bg);z-index:200;display:none;align-items:center;justify-content:center;text-align:center;padding:24px;font-size:18px}
+@media(orientation:portrait){#rotate{display:flex}}
+/* login */
+#login{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:50;background:var(--bg)}
+.box{width:min(380px,90vw);background:var(--card);border:1px solid var(--line);border-left:6px solid var(--org);border-radius:18px;padding:22px}
+.logo{font-size:26px;font-weight:700;margin-bottom:6px}.logo b{color:var(--org)}
+.box p{color:var(--muted);font-size:14px;margin-bottom:12px}
+input{width:100%;padding:11px 12px;margin-bottom:10px;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:10px;font-size:15px}
+input:disabled{opacity:.6}
+.btn{width:100%;padding:11px;background:var(--org);color:#fff;border-radius:10px;font-weight:700}
+.row{display:flex;gap:8px}.row input:first-child{width:80px}
+.err{color:#ff5c5c;font-size:13px;min-height:16px;margin-top:8px}
+/* app */
+#app{display:flex;height:100%}
+#side{width:260px;background:var(--side);display:flex;flex-direction:column;transition:margin .25s;flex-shrink:0;border-right:1px solid var(--line)}
+#side.closed{margin-left:-260px}
+#side .logo{padding:16px 20px}
+#nav{flex:1;overflow:auto;padding:6px 10px}
+.item{display:flex;align-items:center;gap:10px;width:100%;padding:12px 14px;border-radius:10px;font-weight:600;text-align:left}
+.item:hover{background:rgba(255,122,26,.1)}
+.item.active{background:rgba(255,122,26,.18);color:var(--org)}
+.sub{padding-left:22px}.sub .item{font-weight:500;font-size:14px}
+.acc{border-top:1px solid var(--line);padding:8px 10px}
+#main{flex:1;display:flex;flex-direction:column;min-width:0}
+#top{height:48px;display:flex;align-items:center;gap:12px;padding:0 14px;border-bottom:1px solid var(--line)}
+#menuBtn{font-size:22px;color:var(--org);font-weight:700}
+#view{flex:1;position:relative}
+iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:var(--bg)}
+#account{position:absolute;inset:0;overflow:auto;padding:24px;display:none}
+#account .box{border-left-width:1px;width:min(460px,100%)}
+label{font-size:12px;color:var(--muted)}
+.tag{display:inline-block;padding:2px 10px;border-radius:20px;background:rgba(255,122,26,.18);color:var(--org);font-size:13px}
+</style>
+</head>
+<body>
+<div id="rotate">📱↻<br><br>Please rotate your device to landscape<br>to use LastAttempt.</div>
+<div id="loader"><span id="ltype"></span></div>
+
+<!-- LOGIN -->
+<div id="login" class="hide">
+ <div class="box">
+  <div class="logo">Last<b>Attempt</b></div>
+  <div id="s1"><p>Login with your phone number</p>
+   <div class="row"><input id="cc" value="+91"><input id="ph" type="tel" inputmode="numeric" placeholder="Phone number"></div>
+   <button class="btn" id="sendBtn">Send OTP</button></div>
+  <div id="s2" class="hide"><p>Enter the OTP sent to your phone</p>
+   <input id="otp" inputmode="numeric" maxlength="6" placeholder="6-digit OTP">
+   <button class="btn" id="verBtn">Verify</button></div>
+  <div id="s3" class="hide"><p>Welcome! Tell us your name</p>
+   <input id="nm" placeholder="Full name">
+   <button class="btn" id="nmBtn">Continue</button></div>
+  <div class="err" id="err"></div>
+  <div id="recaptcha"></div>
+ </div>
+</div>
+
+<!-- APP -->
+<div id="app" class="hide">
+ <aside id="side">
+  <div class="logo">Last<b>Attempt</b></div>
+  <nav id="nav"></nav>
+  <div class="acc"><button class="item" id="accBtn">👤 Account</button></div>
+ </aside>
+ <section id="main">
+  <div id="top"><button id="menuBtn">✕</button><span id="title" style="font-weight:600"></span></div>
+  <div id="view">
+   <iframe id="frame" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
+   <div id="account">
+    <div class="box">
+     <div class="logo">My Account</div><br>
+     <label>Name</label><input id="aName">
+     <label>Phone Number (cannot be changed)</label><input id="aPhone" disabled>
+     <label>Paid</label><input id="aPaid" disabled>
+     <label>Expiry Date</label><input id="aExp" disabled>
+     <button class="btn" id="aSave">Save changes</button><br><br>
+     <button class="btn" id="aOut" style="background:#444">Logout</button>
+     <div class="err" id="aMsg"></div>
+    </div>
+   </div>
+  </div>
+ </section>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script>
+/* ================= CONFIG ================= */
+const firebaseConfig = {
+  apiKey: "AIzaSyBCEEQWa5nBAJrB4QGK29ddFgvX6kMZ4F4",
+  authDomain: "first-a97d9.firebaseapp.com",
+  projectId: "first-a97d9",
+  storageBucket: "first-a97d9.firebasestorage.app",
+  messagingSenderId: "573901741551",
+  appId: "1:573901741551:web:a1f2ce7a0fd62a5835ea1a",
+  measurementId: "G-05GDDN4MVT"
+};
+
+/* ===== TABS — add new tabs here =====
+   {id,label,icon,src}            -> opens src inside iframe (src:"" shows "Coming soon")
+   {id,label,icon,children:[...]} -> expandable sub-topics
+   type:"account" / "theme"       -> built-in actions                      */
+const TABS = [
+  {id:"home",  label:"Home",       icon:"🏠", src:""},
+  {id:"topic", label:"Topic-wise", icon:"📚", src:""},
+  {id:"mock",  label:"Mock Test",  icon:"📝", src:""},
+  {id:"other", label:"Other",      icon:"⋯", children:[
+    {id:"o-account", label:"Account",    type:"account"},
+    {id:"o-theme",   label:"Theme (Black & White)", type:"theme"},
+    {id:"about",     label:"About Us",   src:""},
+    {id:"privacy",   label:"Privacy",    src:""},
+    {id:"disc",      label:"Disclaimer", src:""},
+    {id:"contact",   label:"Contact",    src:""}
+  ]}
+];
+const DEFAULT_TAB = "home";
+
+/* ================= HELPERS ================= */
+const $ = s => document.querySelector(s);
+let tm, profile = null, user = null, current = null;
+
+function typeLoader(){
+  const t="LastAttempt"; let i=0; clearInterval(tm);
+  tm=setInterval(()=>{ i=(i+1)%(t.length+6); const s=t.slice(0,Math.min(i,t.length));
+    $("#ltype").innerHTML=s.slice(0,4)+"<b>"+s.slice(4)+"</b>"; },140);
+}
+const showLoader=()=>{typeLoader();$("#loader").classList.remove("hide")};
+const hideLoader=()=>{$("#loader").classList.add("hide");clearInterval(tm)};
+const err=m=>$("#err").textContent=m||"";
+
+/* ---- protection: copy / right-click / shortcuts ---- */
+function protect(doc){
+  try{
+    ["contextmenu","copy","cut","dragstart","selectstart"].forEach(e=>doc.addEventListener(e,ev=>{
+      if(ev.target.tagName==="INPUT")return; ev.preventDefault();}));
+    doc.addEventListener("keydown",e=>{
+      const k=e.key.toLowerCase();
+      if(e.key==="F12"||(e.ctrlKey&&["c","x","u","s","p","a"].includes(k))||(e.ctrlKey&&e.shiftKey&&["i","j","c"].includes(k))){
+        if(e.target.tagName==="INPUT"&&["c","x","a"].includes(k))return; e.preventDefault();}
+    });
+    const st=doc.createElement("style");
+    st.textContent="*{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}input,textarea{-webkit-user-select:text;user-select:text}";
+    doc.head.appendChild(st);
+  }catch(e){}
+}
+protect(document);
+
+/* ---- landscape ---- */
+function lockLandscape(){
+  const d=document.documentElement;
+  (d.requestFullscreen?d.requestFullscreen():Promise.resolve()).catch(()=>{})
+   .then(()=>screen.orientation&&screen.orientation.lock&&screen.orientation.lock("landscape")).catch(()=>{});
+}
+document.addEventListener("click",lockLandscape,{once:true});
+
+/* ---- theme ---- */
+function setTheme(t){
+  document.documentElement.setAttribute("data-theme",t);
+  try{localStorage.setItem("la_theme",t)}catch(e){}
+  try{$("#frame").contentDocument.documentElement.setAttribute("data-theme",t)}catch(e){}
+}
+setTheme((()=>{try{return localStorage.getItem("la_theme")||"dark"}catch(e){return"dark"}})());
+
+/* ================= FIREBASE ================= */
+firebase.initializeApp(firebaseConfig);
+const auth=firebase.auth(), db=firebase.firestore();
+auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL); // session saved in browser
+let confirmation=null, verifier=null;
+
+function show(step){["s1","s2","s3"].forEach(i=>$("#"+i).classList.toggle("hide",i!==step));err("")}
+
+$("#sendBtn").onclick=async()=>{
+  const num=$("#cc").value.trim()+$("#ph").value.trim();
+  if(!/^\+\d{10,14}$/.test(num))return err("Enter a valid phone number");
+  try{
+    $("#sendBtn").disabled=true;
+    verifier=verifier||new firebase.auth.RecaptchaVerifier("recaptcha",{size:"invisible"});
+    confirmation=await auth.signInWithPhoneNumber(num,verifier);
+    show("s2");
+  }catch(e){err(e.message);try{verifier.clear();verifier=null}catch(x){}}
+  $("#sendBtn").disabled=false;
+};
+$("#verBtn").onclick=async()=>{
+  try{ await confirmation.confirm($("#otp").value.trim()); }  // onAuthStateChanged continues
+  catch(e){err("Invalid OTP. Try again.")}
+};
+$("#nmBtn").onclick=async()=>{
+  const n=$("#nm").value.trim(); if(!n)return err("Please enter your name");
+  const data={name:n,phone:user.phoneNumber,paid:"NO",expiry:"NA",createdAt:firebase.firestore.FieldValue.serverTimestamp()};
+  try{await db.collection("users").doc(user.uid).set(data);profile=data;startApp()}catch(e){err(e.message)}
+};
+
+auth.onAuthStateChanged(async u=>{
+  user=u;
+  if(!u){hideLoader();$("#app").classList.add("hide");$("#login").classList.remove("hide");show("s1");return;}
+  showLoader();
+  try{
+    const snap=await db.collection("users").doc(u.uid).get();   // checked on every visit
+    if(snap.exists){profile=snap.data();startApp();}
+    else{hideLoader();$("#login").classList.remove("hide");show("s3");}
+  }catch(e){hideLoader();$("#login").classList.remove("hide");show("s1");err(e.message)}
+});
+
+/* ================= APP ================= */
+let started=false;
+function startApp(){
+  $("#login").classList.add("hide");$("#app").classList.remove("hide");
+  fillAccount();
+  if(!started){buildNav();started=true;openTab(find(DEFAULT_TAB));}
+  hideLoader();
+}
+function find(id,list=TABS){for(const t of list){if(t.id===id)return t;if(t.children){const r=find(id,t.children);if(r)return r}}}
+
+function buildNav(){
+  const nav=$("#nav");nav.innerHTML="";
+  TABS.forEach(t=>{
+    const b=document.createElement("button");b.className="item";b.dataset.id=t.id;
+    b.textContent=(t.icon||"")+" "+t.label+(t.children?"  ▾":"");nav.appendChild(b);
+    if(t.children){
+      const sub=document.createElement("div");sub.className="sub hide";
+      t.children.forEach(c=>{const s=document.createElement("button");s.className="item";s.dataset.id=c.id;s.textContent=c.label;s.onclick=()=>openTab(c);sub.appendChild(s)});
+      nav.appendChild(sub);b.onclick=()=>sub.classList.toggle("hide");
+    }else b.onclick=()=>openTab(t);
+  });
+}
+
+function openTab(t){
+  if(!t)return;
+  if(t.type==="theme"){setTheme(document.documentElement.getAttribute("data-theme")==="dark"?"light":"dark");return;}
+  current=t;
+  document.querySelectorAll(".item").forEach(i=>i.classList.toggle("active",i.dataset.id===t.id));
+  $("#title").textContent=t.label;
+  const acc=t.type==="account";
+  $("#account").style.display=acc?"block":"none";
+  $("#frame").style.display=acc?"none":"block";
+  if(acc){fillAccount();return;}
+  const f=$("#frame");
+  f.onload=()=>{try{protect(f.contentDocument);f.contentDocument.documentElement.setAttribute("data-theme",document.documentElement.getAttribute("data-theme"))}catch(e){}};
+  if(t.src){f.removeAttribute("srcdoc");f.src=t.src;}
+  else f.srcdoc=`<body style="margin:0;background:#0e1520;color:#e8edf3;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh"><h2>${t.label} — coming soon</h2></body>`;
+}
+$("#accBtn").onclick=()=>openTab({id:"account",label:"Account",type:"account"});
+
+/* menu / close */
+$("#menuBtn").onclick=()=>{const s=$("#side").classList.toggle("closed");$("#menuBtn").textContent=s?"☰":"✕"};
+
+/* account */
+function fillAccount(){
+  if(!profile)return;
+  $("#aName").value=profile.name||"";$("#aPhone").value=profile.phone||"";
+  $("#aPaid").value=profile.paid||"NO";$("#aExp").value=profile.expiry||"NA";
+}
+$("#aSave").onclick=async()=>{
+  const n=$("#aName").value.trim();if(!n){$("#aMsg").textContent="Name required";return}
+  try{await db.collection("users").doc(user.uid).update({name:n});profile.name=n;$("#aMsg").style.color="#3ddc84";$("#aMsg").textContent="Saved ✓"}
+  catch(e){$("#aMsg").style.color="#ff5c5c";$("#aMsg").textContent=e.message}
+};
+$("#aOut").onclick=()=>{auth.signOut().then(()=>location.reload())};
+
+typeLoader(); // initial loading screen until auth state is known
+</script>
+</body>
+</html>
