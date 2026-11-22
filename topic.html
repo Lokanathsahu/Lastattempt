@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LastAttempt – Topic-wise</title>
+<style>
+:root,[data-theme=dark]{--bg:#0e1520;--card:#172230;--line:#26344a;--text:#e8edf3;--muted:#8b98a8;--org:#ff7a1a}
+[data-theme=light]{--bg:#fff;--card:#f5f5f5;--line:#d6d6d6;--text:#111;--muted:#555;--org:#e56500}
+*{box-sizing:border-box;margin:0;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:Roboto,system-ui,sans-serif}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+.hide{display:none!important}
+#list{padding:20px 24px;height:100%;overflow:auto}
+h2{font-size:17px;margin-bottom:14px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px}
+.card{background:var(--card);border:1px solid var(--line);border-left:6px solid var(--org);border-radius:18px;padding:18px 20px;cursor:pointer;transition:.15s;text-align:left}
+.card:hover{transform:translateY(-3px)}
+.card h3{font-size:18px}.card p{color:var(--muted);font-size:13px;margin:12px 0 14px}
+.card span{color:var(--org);font-weight:700;font-size:14px}
+#viewer{display:flex;flex-direction:column;height:100%}
+#bar{display:flex;align-items:center;gap:12px;padding:8px 14px;border-bottom:1px solid var(--line)}
+#back{width:36px;height:36px;border-radius:50%;background:var(--card);border:1px solid var(--line);font-size:20px;color:var(--org);font-weight:700}
+#back:hover{background:var(--org);color:#fff}
+#vt{font-weight:600}
+#inner{flex:1;width:100%;border:0;background:var(--bg)}
+</style>
+</head>
+<body>
+
+<div id="list">
+  <h2>Topic-Wise Practice Available</h2>
+  <div class="grid" id="grid"></div>
+</div>
+
+<div id="viewer" class="hide">
+  <div id="bar"><button id="back" title="Back">←</button><span id="vt"></span></div>
+  <iframe id="inner" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
+</div>
+
+<script>
+/* ===== ADD MORE TOPICS HERE — one line per topic =====
+   {name, desc, url}   url = page that opens when the card is clicked ("" = coming soon) */
+const TOPICS = [
+  {name:"Quant",           desc:"DI, Arithmetic, Missing Number...",  url:"quant.html"},
+  {name:"Reasoning",       desc:"Puzzle, Syllogisms, Coding...",      url:"reasoning.html"},
+  {name:"English",         desc:"RC, Error Spotting, Fillers...",     url:"english.html"},
+  {name:"Current Affairs", desc:"Daily, Weekly, Monthly...",          url:"current-affairs.html"}
+];
+
+const $=s=>document.querySelector(s);
+const theme=()=>document.documentElement.getAttribute("data-theme")||"dark";
+try{document.documentElement.setAttribute("data-theme",localStorage.getItem("la_theme")||"dark")}catch(e){}
+
+/* build cards */
+TOPICS.forEach(t=>{
+  const c=document.createElement("button");c.className="card";
+  const h=document.createElement("h3");h.textContent=t.name;
+  const p=document.createElement("p");p.textContent=t.desc;
+  const s=document.createElement("span");s.textContent="Start →";
+  c.append(h,p,s);c.onclick=()=>openTopic(t);$("#grid").appendChild(c);
+});
+
+/* open topic inside this tab, back arrow returns to list */
+function openTopic(t){
+  $("#list").classList.add("hide");$("#viewer").classList.remove("hide");$("#vt").textContent=t.name;
+  const f=$("#inner");
+  f.onload=()=>styleInner();
+  if(t.url){f.removeAttribute("srcdoc");f.src=t.url}
+  else f.srcdoc='<body style="margin:0;background:var(--bg);color:var(--text);font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh"><h2>'+t.name+' — coming soon</h2></body>';
+}
+$("#back").onclick=()=>{
+  $("#viewer").classList.add("hide");$("#list").classList.remove("hide");
+  const f=$("#inner");f.removeAttribute("srcdoc");f.src="about:blank";
+};
+
+/* pass theme + protection to the opened page (same-domain pages) */
+function styleInner(){
+  try{
+    const d=$("#inner").contentDocument;if(!d||!d.documentElement)return;
+    d.documentElement.setAttribute("data-theme",theme());
+    let st=d.getElementById("la-theme");
+    if(!st){st=d.createElement("style");st.id="la-theme";(d.head||d.documentElement).appendChild(st)}
+    st.textContent='html[data-theme=dark]{--bg:#0e1520;--card:#172230;--line:#26344a;--text:#e8edf3;--muted:#8b98a8;--org:#ff7a1a}html[data-theme=light]{--bg:#fff;--card:#f5f5f5;--line:#d6d6d6;--text:#111;--muted:#555;--org:#e56500}html[data-theme=light],html[data-theme=light] body{background:#fff!important;color:#111!important}*{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}input,textarea{-webkit-user-select:text;user-select:text}';
+    ["contextmenu","copy","cut","dragstart","selectstart"].forEach(e=>d.addEventListener(e,x=>{if(x.target.tagName!=="INPUT")x.preventDefault()}));
+  }catch(e){}
+}
+/* when parent switches theme, update opened page too */
+new MutationObserver(styleInner).observe(document.documentElement,{attributes:true,attributeFilter:["data-theme"]});
+
+/* copy / right-click protection for this page */
+["contextmenu","copy","cut","dragstart","selectstart"].forEach(e=>document.addEventListener(e,x=>x.preventDefault()));
+document.addEventListener("keydown",e=>{const k=e.key.toLowerCase();
+  if(e.key==="F12"||(e.ctrlKey&&["c","x","u","s","p","a"].includes(k))||(e.ctrlKey&&e.shiftKey&&["i","j","c"].includes(k)))e.preventDefault()});
+</script>
+</body>
+</html>
