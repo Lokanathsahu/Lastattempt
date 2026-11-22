@@ -49,6 +49,12 @@ iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:var(
 #account .box{border-left-width:1px;width:min(460px,100%)}
 label{font-size:12px;color:var(--muted)}
 .tag{display:inline-block;padding:2px 10px;border-radius:20px;background:rgba(255,122,26,.18);color:var(--org);font-size:13px}
+.tabs{display:flex;gap:6px;margin:10px 0 14px}.tabs button{flex:1;padding:9px;border-radius:10px;background:var(--bg);border:1px solid var(--line);font-weight:600}
+.tabs .on{background:var(--org);color:#fff;border-color:var(--org)}
+.hint{font-size:12px;color:var(--muted);margin:-4px 0 10px}.hint.ok{color:#3ddc84}.hint.bad{color:#ff5c5c}
+#snack{position:fixed;left:50%;bottom:24px;transform:translate(-50%,80px);padding:12px 22px;border-radius:10px;color:#fff;font-weight:600;z-index:300;opacity:0;transition:.3s}
+#snack.on{transform:translate(-50%,0);opacity:1}
+.box{max-height:96vh;overflow:auto}
 </style>
 </head>
 <body>
@@ -59,19 +65,25 @@ label{font-size:12px;color:var(--muted)}
 <div id="login" class="hide">
  <div class="box">
   <div class="logo">Last<b>Attempt</b></div>
-  <div id="s1"><p>Login with your phone number</p>
-   <div class="row"><input id="cc" value="+91"><input id="ph" type="tel" inputmode="numeric" placeholder="Phone number"></div>
-   <button class="btn" id="sendBtn">Send OTP</button></div>
-  <div id="s2" class="hide"><p>Enter the OTP sent to your phone</p>
-   <input id="otp" inputmode="numeric" maxlength="6" placeholder="6-digit OTP">
-   <button class="btn" id="verBtn">Verify</button></div>
-  <div id="s3" class="hide"><p>Welcome! Tell us your name</p>
-   <input id="nm" placeholder="Full name">
-   <button class="btn" id="nmBtn">Continue</button></div>
+  <div class="tabs"><button id="tIn" class="on">Sign In</button><button id="tUp">Sign Up</button></div>
+  <div id="fIn">
+   <input id="siId" placeholder="Phone number or Email ID" autocomplete="username">
+   <input id="siPw" type="password" placeholder="Password" autocomplete="current-password">
+   <button class="btn" id="siBtn">Sign In</button>
+  </div>
+  <div id="fUp" class="hide">
+   <input id="suName" placeholder="Full name">
+   <div class="row"><input id="cc" value="+91"><input id="suPh" type="tel" inputmode="numeric" placeholder="Phone number"></div>
+   <input id="suEm" type="email" placeholder="Email ID">
+   <input id="suPw" type="password" placeholder="Password" autocomplete="new-password">
+   <input id="suPw2" type="password" placeholder="Confirm password" autocomplete="new-password">
+   <div class="hint" id="hint">Min 8 chars with letters, numbers &amp; symbols</div>
+   <button class="btn" id="suBtn">Sign Up</button>
+  </div>
   <div class="err" id="err"></div>
-  <div id="recaptcha"></div>
  </div>
 </div>
+<div id="snack"></div>
 
 <!-- APP -->
 <div id="app" class="hide">
@@ -89,6 +101,7 @@ label{font-size:12px;color:var(--muted)}
      <div class="logo">My Account</div><br>
      <label>Name</label><input id="aName">
      <label>Phone Number (cannot be changed)</label><input id="aPhone" disabled>
+     <label>Email ID (cannot be changed)</label><input id="aEmail" disabled>
      <label>Paid</label><input id="aPaid" disabled>
      <label>Expiry Date</label><input id="aExp" disabled>
      <button class="btn" id="aSave">Save changes</button><br><br>
@@ -183,40 +196,69 @@ setTheme((()=>{try{return localStorage.getItem("la_theme")||"dark"}catch(e){retu
 firebase.initializeApp(firebaseConfig);
 const auth=firebase.auth(), db=firebase.firestore();
 auth.setPersistence(firebase.auth.Auth.Persistence.LOCAL); // session saved in browser
-let confirmation=null, verifier=null;
+let busy=false;
 
-function show(step){["s1","s2","s3"].forEach(i=>$("#"+i).classList.toggle("hide",i!==step));err("")}
+function snack(m,ok=true){const e=$("#snack");e.textContent=m;e.style.background=ok?"#1f9d55":"#d64545";e.classList.add("on");setTimeout(()=>e.classList.remove("on"),3000)}
+const strong=p=>p.length>=8&&/[A-Za-z]/.test(p)&&/\d/.test(p)&&/[^A-Za-z0-9]/.test(p);
+const cache=p=>{try{localStorage.setItem("la_user",JSON.stringify(p))}catch(e){}};
+const normPhone=(v,cc="+91")=>{v=v.replace(/[\s-]/g,"");return v.startsWith("+")?v:cc+v};
+const nice=e=>({"auth/email-already-in-use":"Email already registered","auth/invalid-credential":"Wrong phone/email or password","auth/wrong-password":"Wrong phone/email or password","auth/user-not-found":"Wrong phone/email or password","auth/too-many-requests":"Too many attempts. Try later","auth/operation-not-allowed":"Enable Email/Password in Firebase Authentication"}[e.code]||e.message);
 
-$("#sendBtn").onclick=async()=>{
-  const num=$("#cc").value.trim()+$("#ph").value.trim();
-  if(!/^\+\d{10,14}$/.test(num))return err("Enter a valid phone number");
+$("#tIn").onclick=()=>tab(true);$("#tUp").onclick=()=>tab(false);
+function tab(inn){$("#fIn").classList.toggle("hide",!inn);$("#fUp").classList.toggle("hide",inn);$("#tIn").classList.toggle("on",inn);$("#tUp").classList.toggle("on",!inn);err("")}
+$("#suPw").oninput=()=>{const p=$("#suPw").value,h=$("#hint");
+  h.className="hint "+(strong(p)?"ok":"bad");h.textContent=strong(p)?"Strong password ✓":"Need 8+ chars with letters, numbers & symbols"};
+
+$("#suBtn").onclick=async()=>{
+  const name=$("#suName").value.trim(),phone=normPhone($("#suPh").value,$("#cc").value.trim()),
+        email=$("#suEm").value.trim().toLowerCase(),pw=$("#suPw").value,pw2=$("#suPw2").value;
+  if(!name)return err("Enter your name");
+  if(!/^\+\d{10,14}$/.test(phone))return err("Enter a valid phone number");
+  if(!/^\S+@\S+\.\S+$/.test(email))return err("Enter a valid email");
+  if(!strong(pw))return err("Weak password: use letters, numbers and symbols (8+ chars)");
+  if(pw!==pw2)return err("Passwords do not match");
+  busy=true;showLoader();
   try{
-    $("#sendBtn").disabled=true;
-    verifier=verifier||new firebase.auth.RecaptchaVerifier("recaptcha",{size:"invisible"});
-    confirmation=await auth.signInWithPhoneNumber(num,verifier);
-    show("s2");
-  }catch(e){err(e.message);try{verifier.clear();verifier=null}catch(x){}}
-  $("#sendBtn").disabled=false;
+    if((await db.collection("phones").doc(phone).get()).exists)throw{message:"Phone number already registered"};
+    const c=await auth.createUserWithEmailAndPassword(email,pw);user=c.user;
+    const data={name,phone,email,paid:"NO",expiry:"NA",createdAt:firebase.firestore.FieldValue.serverTimestamp()};
+    await db.collection("users").doc(user.uid).set(data);
+    await db.collection("phones").doc(phone).set({email,uid:user.uid});
+    profile=data;cache({name,phone,email,paid:"NO",expiry:"NA"});
+    startApp();snack("Sign up successful");
+  }catch(e){hideLoader();err(nice(e))}
+  busy=false;
 };
-$("#verBtn").onclick=async()=>{
-  try{ await confirmation.confirm($("#otp").value.trim()); }  // onAuthStateChanged continues
-  catch(e){err("Invalid OTP. Try again.")}
-};
-$("#nmBtn").onclick=async()=>{
-  const n=$("#nm").value.trim(); if(!n)return err("Please enter your name");
-  const data={name:n,phone:user.phoneNumber,paid:"NO",expiry:"NA",createdAt:firebase.firestore.FieldValue.serverTimestamp()};
-  try{await db.collection("users").doc(user.uid).set(data);profile=data;startApp()}catch(e){err(e.message)}
+
+$("#siBtn").onclick=async()=>{
+  let id=$("#siId").value.trim().toLowerCase();const pw=$("#siPw").value;
+  if(!id||!pw)return err("Enter phone/email and password");
+  busy=true;showLoader();
+  try{
+    let email=id;
+    if(!id.includes("@")){
+      const d=await db.collection("phones").doc(normPhone(id)).get();
+      if(!d.exists)throw{code:"auth/invalid-credential"};
+      email=d.data().email;
+    }
+    const c=await auth.signInWithEmailAndPassword(email,pw);user=c.user;
+    const snap=await db.collection("users").doc(user.uid).get();
+    if(!snap.exists)throw{message:"Account data not found"};
+    profile=snap.data();cache(profile);startApp();snack("Login successful");
+  }catch(e){hideLoader();err(nice(e))}
+  busy=false;
 };
 
 auth.onAuthStateChanged(async u=>{
+  if(busy)return;
   user=u;
-  if(!u){hideLoader();$("#app").classList.add("hide");$("#login").classList.remove("hide");show("s1");return;}
+  if(!u){hideLoader();$("#app").classList.add("hide");$("#login").classList.remove("hide");return;}
   showLoader();
   try{
     const snap=await db.collection("users").doc(u.uid).get();   // checked on every visit
-    if(snap.exists){profile=snap.data();startApp();}
-    else{hideLoader();$("#login").classList.remove("hide");show("s3");}
-  }catch(e){hideLoader();$("#login").classList.remove("hide");show("s1");err(e.message)}
+    if(snap.exists){profile=snap.data();cache(profile);startApp();}
+    else{await auth.signOut()}
+  }catch(e){hideLoader();$("#login").classList.remove("hide");err(e.message)}
 });
 
 /* ================= APP ================= */
@@ -265,7 +307,7 @@ $("#menuBtn").onclick=()=>{const s=$("#side").classList.toggle("closed");$("#men
 /* account */
 function fillAccount(){
   if(!profile)return;
-  $("#aName").value=profile.name||"";$("#aPhone").value=profile.phone||"";
+  $("#aName").value=profile.name||"";$("#aPhone").value=profile.phone||"";$("#aEmail").value=profile.email||"";
   $("#aPaid").value=profile.paid||"NO";$("#aExp").value=profile.expiry||"NA";
 }
 $("#aSave").onclick=async()=>{
@@ -273,7 +315,7 @@ $("#aSave").onclick=async()=>{
   try{await db.collection("users").doc(user.uid).update({name:n});profile.name=n;$("#aMsg").style.color="#3ddc84";$("#aMsg").textContent="Saved ✓"}
   catch(e){$("#aMsg").style.color="#ff5c5c";$("#aMsg").textContent=e.message}
 };
-$("#aOut").onclick=()=>{auth.signOut().then(()=>location.reload())};
+$("#aOut").onclick=()=>{try{localStorage.removeItem("la_user")}catch(e){}auth.signOut().then(()=>location.reload())};
 
 typeLoader(); // initial loading screen until auth state is known
 </script>
