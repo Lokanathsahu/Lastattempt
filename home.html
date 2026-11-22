@@ -44,40 +44,21 @@ footer{text-align:center;color:var(--muted);font-size:12px;margin-top:10px}
     <h2 style="margin-top:10px">Take a full-length mock test</h2>
     <p>Exam-pattern tests with timer, instant results and detailed solutions to find your weak areas.</p>
   </div>
-  <button class="btn" onclick="go('mock')">Start Mock Test →</button>
+ <a href="https://example.com"> <button class="btn" >Start Mock Test →</button></a>
 </div>
 
+
+
+<h3>Topic-Wise Practice Available</h3>
 <div class="grid g4">
-  <div class="card stat"><small>Questions solved</small><div id="sQ">0</div></div>
-  <div class="card stat"><small>Accuracy</small><div><span id="sA">0</span>%</div></div>
-  <div class="card stat"><small>Tests taken</small><div id="sT">0</div></div>
-  <div class="card stat"><small>Day streak</small><div>🔥 <span id="sS">0</span></div></div>
+  <div class="card exam" onclick="go('topic')"><h4>Quant</h4><p>DI, Arithmetic, Missing Number...</p><a>Start →</a></div>
+  <div class="card exam" onclick="go('topic')"><h4>Reasoning</h4><p>Puzzle, Syllogims, Coding...</p><a>Start →</a></div>
+  <div class="card exam" onclick="go('topic')"><h4>English</h4><p>RC, Error Spotting, Fillers...</p><a>Start →</a></div>
+  <div class="card exam" onclick="go('topic')"><h4>Current Affairs</h4><p>Daily, Weekly, Monthly...</p><a>Start →</a></div>
 </div>
 
-<h3>Choose your exam</h3>
-<div class="grid g4">
-  <div class="card exam" onclick="go('topic')"><h4>Clerk Pre</h4><p>Preliminary examination</p><a>Start →</a></div>
-  <div class="card exam" onclick="go('topic')"><h4>Clerk Mains</h4><p>Mains examination</p><a>Start →</a></div>
-  <div class="card exam" onclick="go('topic')"><h4>PO Pre</h4><p>Preliminary examination</p><a>Start →</a></div>
-  <div class="card exam" onclick="go('topic')"><h4>PO Mains</h4><p>Mains examination</p><a>Start →</a></div>
-</div>
 
-<div class="grid g3">
-  <div class="card">
-    <h3>Daily goal</h3>
-    <div class="muted"><span id="gDone">0</span> / 50 questions today</div>
-    <div class="bar"><i id="gBar" style="width:0%"></i></div>
-    <p class="muted">Small steps every day beat last-minute cramming.</p>
-  </div>
-  <div class="card">
-    <h3>Subjects</h3>
-    <ul><li>Reasoning Ability</li><li>Quantitative Aptitude</li><li>English Language</li><li>General Awareness</li></ul>
-  </div>
-  <div class="card">
-    <h3>Smart tips</h3>
-    <ul><li>Attempt easy questions first</li><li>Review every wrong answer</li><li>Practise with a timer</li><li>Revise formulas daily</li></ul>
-  </div>
-</div>
+
 
 <footer>© LastAttempt · Practise. Improve. Succeed.</footer>
 
