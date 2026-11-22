@@ -6,7 +6,7 @@
 <title>LastAttempt</title>
 <style>
 :root{--bg:#0e1520;--side:#06243b;--card:#172230;--line:#26344a;--text:#e8edf3;--muted:#8b98a8;--org:#ff7a1a}
-[data-theme=light]{--bg:#ffffff;--side:#f2f2f2;--card:#f7f7f7;--line:#d6d6d6;--text:#111;--muted:#555;--org:#e56500}
+[data-theme=light]{--bg:#ffffff;--side:#ffffff;--card:#f5f5f5;--line:#d6d6d6;--text:#111;--muted:#555;--org:#e56500}
 *{box-sizing:border-box;margin:0;-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 input{-webkit-user-select:text;user-select:text}
 html,body{height:100%;background:var(--bg);color:var(--text);font-family:Roboto,system-ui,sans-serif;overflow:hidden}
@@ -45,8 +45,10 @@ input:disabled{opacity:.6}
 #menuBtn{font-size:22px;color:var(--org);font-weight:700}
 #view{flex:1;position:relative}
 iframe{position:absolute;inset:0;width:100%;height:100%;border:0;background:var(--bg)}
-#account{position:absolute;inset:0;overflow:auto;padding:24px;display:none}
-#account .box{border-left-width:1px;width:min(460px,100%)}
+#account{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:60;display:none;align-items:center;justify-content:center;padding:12px}
+#account .box{position:relative;border-left-width:1px;width:min(460px,100%)}
+.x{position:absolute;top:10px;right:14px;font-size:22px;color:var(--muted);width:auto}
+.acc{max-height:60%;overflow:auto}
 label{font-size:12px;color:var(--muted)}
 .tag{display:inline-block;padding:2px 10px;border-radius:20px;background:rgba(255,122,26,.18);color:var(--org);font-size:13px}
 .tabs{display:flex;gap:6px;margin:10px 0 14px}.tabs button{flex:1;padding:9px;border-radius:10px;background:var(--bg);border:1px solid var(--line);font-weight:600}
@@ -90,14 +92,14 @@ label{font-size:12px;color:var(--muted)}
  <aside id="side">
   <div class="logo">Last<b>Attempt</b></div>
   <nav id="nav"></nav>
-  <div class="acc"><button class="item" id="accBtn">👤 Account</button></div>
+  <div class="acc"><button class="item" id="accBtn">👤 Account</button><div id="bottom"></div></div>
  </aside>
  <section id="main">
   <div id="top"><button id="menuBtn">✕</button><span id="title" style="font-weight:600"></span></div>
   <div id="view">
    <iframe id="frame" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
    <div id="account">
-    <div class="box">
+    <div class="box"><button class="x" id="aClose" title="Close">✕</button>
      <div class="logo">My Account</div><br>
      <label>Name</label><input id="aName">
      <label>Phone Number (cannot be changed)</label><input id="aPhone" disabled>
@@ -129,14 +131,13 @@ const firebaseConfig = {
 
 /* ===== TABS — add new tabs here =====
    {id,label,icon,src}            -> opens src inside iframe (src:"" shows "Coming soon")
-   {id,label,icon,children:[...]} -> expandable sub-topics
+   {id,label,icon,children:[...]} -> expandable sub-topics (add pos:"bottom" to place in the bottom of the panel)
    type:"account" / "theme"       -> built-in actions                      */
 const TABS = [
   {id:"home",  label:"Home",       icon:"🏠", src:""},
   {id:"topic", label:"Topic-wise", icon:"📚", src:""},
   {id:"mock",  label:"Mock Test",  icon:"📝", src:""},
-  {id:"other", label:"Other",      icon:"⋯", children:[
-    {id:"o-account", label:"Account",    type:"account"},
+  {id:"other", label:"Other",      icon:"⋯", pos:"bottom", children:[
     {id:"o-theme",   label:"Theme (Black & White)", type:"theme"},
     {id:"about",     label:"About Us",   src:""},
     {id:"privacy",   label:"Privacy",    src:""},
@@ -185,10 +186,16 @@ function lockLandscape(){
 document.addEventListener("click",lockLandscape,{once:true});
 
 /* ---- theme ---- */
+function themeDoc(d,t){
+  d.documentElement.setAttribute("data-theme",t);
+  let st=d.getElementById("la-theme");
+  if(!st){st=d.createElement("style");st.id="la-theme";(d.head||d.documentElement).appendChild(st)}
+  st.textContent='html[data-theme=dark]{--bg:#0e1520;--card:#172230;--line:#26344a;--text:#e8edf3;--muted:#8b98a8;--org:#ff7a1a}html[data-theme=light]{--bg:#fff;--card:#f5f5f5;--line:#d6d6d6;--text:#111;--muted:#555;--org:#e56500}html[data-theme=light],html[data-theme=light] body{background:#fff!important;color:#111!important}';
+}
 function setTheme(t){
   document.documentElement.setAttribute("data-theme",t);
   try{localStorage.setItem("la_theme",t)}catch(e){}
-  try{$("#frame").contentDocument.documentElement.setAttribute("data-theme",t)}catch(e){}
+  try{themeDoc($("#frame").contentDocument,t)}catch(e){}
 }
 setTheme((()=>{try{return localStorage.getItem("la_theme")||"dark"}catch(e){return"dark"}})());
 
@@ -272,34 +279,41 @@ function startApp(){
 function find(id,list=TABS){for(const t of list){if(t.id===id)return t;if(t.children){const r=find(id,t.children);if(r)return r}}}
 
 function buildNav(){
-  const nav=$("#nav");nav.innerHTML="";
+  $("#nav").innerHTML="";$("#bottom").innerHTML="";
   TABS.forEach(t=>{
+    const bot=t.pos==="bottom",host=bot?$("#bottom"):$("#nav");
     const b=document.createElement("button");b.className="item";b.dataset.id=t.id;
-    b.textContent=(t.icon||"")+" "+t.label+(t.children?"  ▾":"");nav.appendChild(b);
+    b.textContent=(t.icon||"")+" "+t.label+(t.children?(bot?"  ▴":"  ▾"):"");
     if(t.children){
       const sub=document.createElement("div");sub.className="sub hide";
-      t.children.forEach(c=>{const s=document.createElement("button");s.className="item";s.dataset.id=c.id;s.textContent=c.label;s.onclick=()=>openTab(c);sub.appendChild(s)});
-      nav.appendChild(sub);b.onclick=()=>sub.classList.toggle("hide");
-    }else b.onclick=()=>openTab(t);
+      t.children.forEach(c=>{const x=document.createElement("button");x.className="item";x.dataset.id=c.id;x.textContent=c.label;x.onclick=()=>openTab(c);sub.appendChild(x)});
+      if(bot)host.append(sub,b);else host.append(b,sub);
+      b.onclick=()=>sub.classList.toggle("hide");
+    }else{host.appendChild(b);b.onclick=()=>openTab(t);}
   });
 }
 
 function openTab(t){
   if(!t)return;
   if(t.type==="theme"){setTheme(document.documentElement.getAttribute("data-theme")==="dark"?"light":"dark");return;}
+  if(t.type==="account"){toggleAccount();return;}
   current=t;
   document.querySelectorAll(".item").forEach(i=>i.classList.toggle("active",i.dataset.id===t.id));
   $("#title").textContent=t.label;
-  const acc=t.type==="account";
-  $("#account").style.display=acc?"block":"none";
-  $("#frame").style.display=acc?"none":"block";
-  if(acc){fillAccount();return;}
+  $("#frame").style.display="block";
   const f=$("#frame");
-  f.onload=()=>{try{protect(f.contentDocument);f.contentDocument.documentElement.setAttribute("data-theme",document.documentElement.getAttribute("data-theme"))}catch(e){}};
+  f.onload=()=>{try{protect(f.contentDocument);themeDoc(f.contentDocument,document.documentElement.getAttribute("data-theme"))}catch(e){}};
   if(t.src){f.removeAttribute("srcdoc");f.src=t.src;}
-  else f.srcdoc=`<body style="margin:0;background:#0e1520;color:#e8edf3;font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh"><h2>${t.label} — coming soon</h2></body>`;
+  else f.srcdoc=`<body style="margin:0;background:var(--bg);color:var(--text);font-family:sans-serif;display:flex;align-items:center;justify-content:center;height:100vh"><h2>${t.label} — coming soon</h2></body>`;
 }
-$("#accBtn").onclick=()=>openTab({id:"account",label:"Account",type:"account"});
+function toggleAccount(force){
+  const a=$("#account"),open=force!==undefined?force:a.style.display!=="flex";
+  if(open)fillAccount();a.style.display=open?"flex":"none";$("#accBtn").classList.toggle("active",open);
+}
+$("#accBtn").onclick=()=>toggleAccount();
+$("#aClose").onclick=()=>toggleAccount(false);
+$("#account").addEventListener("click",e=>{if(e.target.id==="account")toggleAccount(false)});
+document.addEventListener("keydown",e=>{if(e.key==="Escape")toggleAccount(false)});
 
 /* menu / close */
 $("#menuBtn").onclick=()=>{const s=$("#side").classList.toggle("closed");$("#menuBtn").textContent=s?"☰":"✕"};
